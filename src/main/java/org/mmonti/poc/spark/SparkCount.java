@@ -3,31 +3,36 @@ package org.mmonti.poc.spark;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
+import org.mmonti.poc.spark.actions.SumLength;
+import org.mmonti.poc.spark.transformations.GetLength;
 
 /**
  * Created by mmonti on 8/11/14.
  */
 public class SparkCount {
 
-    public static void main(String[] args) {
-        SparkConf conf = new SparkConf(true).setAppName("SparkCount").setMaster("local");
-        JavaSparkContext context = new JavaSparkContext(conf);
+    private static final String APP_NAME = "SparkCount";
+    private static final String MASTER = "local";
 
-        JavaRDD<String> rdd = context.textFile("./src/main/resources/info.txt", 2);
-        JavaRDD<Integer> lengths = rdd.map(new Function<String, Integer>() {
-            @Override
-            public Integer call(String string) throws Exception {
-                return string.length();
-            }
-        });
-        int total = lengths.reduce(new Function2<Integer, Integer, Integer>() {
-            @Override
-            public Integer call(Integer integer, Integer integer2) throws Exception {
-                return integer+integer2;
-            }
-        });
-        System.out.println("Total count="+total);
+    private final SparkConf configuration;
+    private final JavaSparkContext context;
+
+    public SparkCount() {
+        this.configuration = new SparkConf(true);
+        this.configuration.setAppName(APP_NAME);
+        this.configuration.setMaster(MASTER);
+
+        this.context = new JavaSparkContext(this.configuration);
+    }
+
+    public int count(String file) {
+        final JavaRDD<String> rdd = this.context.textFile(file);
+        return rdd.map(new GetLength()).reduce(new SumLength());
+    }
+
+    public static void main(String[] args) {
+        final SparkCount counter = new SparkCount();
+        int result = counter.count("./src/main/resources/info.txt");
+        System.out.println("Total count in file = ["+result+"]");
     }
 }
